@@ -1,0 +1,116 @@
+---------------------------------------------------------Product Table------------------------------------------------------------------------------
+/****** Object:  Table [dbo].[Products]    Script Date: 31-01-2019 16:53:04 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[Products](
+	[ProductID] [int] IDENTITY(1,1) NOT NULL,
+	[Name] [nvarchar](50) NOT NULL,
+	[Price] [money] NULL,
+	[Colour] [nvarchar](50) NULL,
+	[CategoryId] [int] NULL,
+	[Size] [nvarchar](50) NULL,
+ CONSTRAINT [ProductsPK] PRIMARY KEY CLUSTERED 
+(
+	[ProductID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+---------------------------------------------------------UDF------------------------------------------------------------------------------
+
+CREATE FUNCTION SplitString
+(    
+      @Input NVARCHAR(MAX),
+      @Character CHAR(1)
+)
+RETURNS @Output TABLE (
+      Item NVARCHAR(1000)
+)
+AS
+BEGIN
+      DECLARE @StartIndex INT, @EndIndex INT
+ 
+      SET @StartIndex = 1
+      IF SUBSTRING(@Input, LEN(@Input) - 1, LEN(@Input)) <> @Character
+      BEGIN
+            SET @Input = @Input + @Character
+      END
+ 
+      WHILE CHARINDEX(@Character, @Input) > 0
+      BEGIN
+            SET @EndIndex = CHARINDEX(@Character, @Input)
+           
+            INSERT INTO @Output(Item)
+            SELECT SUBSTRING(@Input, @StartIndex, @EndIndex - 1)
+           
+            SET @Input = SUBSTRING(@Input, @EndIndex + 1, LEN(@Input))
+      END
+ 
+      RETURN
+END
+GO
+
+
+CREATE FUNCTION dbo.multi_test(@FirstLetter char(1))
+RETURNS @tempabc TABLE
+(
+		name varchar(100)
+)
+AS
+BEGIN
+	INSERT INTO @tempabc
+	select Name from Products
+	where name like ''+@FirstLetter+'%'
+	RETURN
+END
+
+
+select * from dbo.multi_test('A')
+
+
+CREATE FUNCTION dbo.InlineTable_Test(@FirstLetter char(1))
+RETURNS TABLE
+AS
+	RETURN 
+	(SELECT *
+	FROM 
+		Products
+	WHERE 
+		LEFT(name, 1) =  @FirstLetter);
+
+
+select * from dbo.InlineTable_Test('A')
+
+-------- Scalar FUNCTION -------------
+
+ALTER FUNCTION [dbo].[fn_GetDateOnly]()
+RETURNS VARCHAR(10)
+AS
+BEGIN
+	RETURN CONVERT(VARCHAR(10),GETDATE(),101)	
+END
+
+select dbo.fn_GetDateOnly()
+
+ALTER FUNCTION [dbo].[fn_ColorWiseMaxPriceOfProduct](@Colour varchar(10))
+RETURNS DECIMAL(18,2)
+AS
+BEGIN
+	DECLARE @RESULT DECIMAL(18,2) = 0.0;
+	SELECT 
+		@RESULT = MAX(Price)
+	FROM 
+		Products
+	WHERE
+		Colour = @Colour
+
+	return @RESULT
+END
+
+
+select dbo.fn_ColorWiseMaxPriceOfProduct('red')
